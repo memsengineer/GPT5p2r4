@@ -106,9 +106,15 @@ UART_HandleTypeDef huart6;
 SDRAM_HandleTypeDef hsdram1;
 
 osThreadId defaultTaskHandle;
+
+
 /* USER CODE BEGIN PV */
 #define AUDIO_BUFFER_SIZE 2048
-int16_t RxBuffer[AUDIO_BUFFER_SIZE];
+
+// ALIGN_32BYTES is a macro often provided by ST, but we use the GCC attribute directly here to be safe.
+__attribute__((aligned(32))) int16_t RxBuffer[AUDIO_BUFFER_SIZE];
+__attribute__((aligned(32))) int16_t TxBuffer[AUDIO_BUFFER_SIZE];
+
 volatile uint32_t RxCallbackCount = 0;
 /* USER CODE END PV */
 
@@ -159,9 +165,9 @@ void StartDefaultTask(void const * argument);
 int main(void)
 {
 
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
+	/* USER CODE BEGIN 1 */
+	  SCB_DisableDCache(); // Turn off Data Cache completely for testing
+	/* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
   //MPU_Config(); MW comment
@@ -213,8 +219,16 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-    // Start SAI2 Block B (Microphone) in DMA Receive mode
+    // 1. Start SAI2 Block B (Microphone - Slave Receiver)
     if (HAL_SAI_Receive_DMA(&hsai_BlockB2, (uint8_t *)RxBuffer, AUDIO_BUFFER_SIZE) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    // 2. Start SAI2 Block A (Headphone - Master Transmitter) to generate the CLOCK
+    // We send a zeroed buffer (silence) for now just to get the clock running.
+    memset(TxBuffer, 0, sizeof(TxBuffer));
+    if (HAL_SAI_Transmit_DMA(&hsai_BlockA2, (uint8_t *)TxBuffer, AUDIO_BUFFER_SIZE) != HAL_OK)
     {
       Error_Handler();
     }
@@ -1643,9 +1657,11 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
 {
-  // Check if the callback comes from the Microphone SAI Block
   if (hsai->Instance == SAI2_Block_B)
   {
+    // Invalidate D-Cache for the Receive Buffer so the CPU sees new DMA data
+    SCB_InvalidateDCache_by_Addr((uint32_t *)RxBuffer, AUDIO_BUFFER_SIZE * sizeof(int16_t));
+
     RxCallbackCount++;
   }
 }
