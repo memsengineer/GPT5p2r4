@@ -107,7 +107,9 @@ SDRAM_HandleTypeDef hsdram1;
 
 osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
-
+#define AUDIO_BUFFER_SIZE 2048
+int16_t RxBuffer[AUDIO_BUFFER_SIZE];
+volatile uint32_t RxCallbackCount = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -162,7 +164,7 @@ int main(void)
   /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
-  MPU_Config();
+  //MPU_Config(); MW comment
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -211,7 +213,11 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-
+    // Start SAI2 Block B (Microphone) in DMA Receive mode
+    if (HAL_SAI_Receive_DMA(&hsai_BlockB2, (uint8_t *)RxBuffer, AUDIO_BUFFER_SIZE) != HAL_OK)
+    {
+      Error_Handler();
+    }
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -1635,7 +1641,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
+{
+  // Check if the callback comes from the Microphone SAI Block
+  if (hsai->Instance == SAI2_Block_B)
+  {
+    RxCallbackCount++;
+  }
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
