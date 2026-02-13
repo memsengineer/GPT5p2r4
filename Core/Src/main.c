@@ -1714,9 +1714,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
-/* USER CODE BEGIN 4 */
-// Replace HAL_SAI_RxCpltCallback with this:
+
 void BSP_AUDIO_IN_TransferComplete_CallBack(void)
 {
     // This is called by the BSP when the buffer is full
