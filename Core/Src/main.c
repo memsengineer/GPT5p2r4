@@ -327,9 +327,14 @@ int main(void)
     Codec_WriteReg(0x0039, 0x0139);
     Codec_WriteReg(0x003A, 0x0139);
 
-    // 5. Unmute DAC1 (Digital Path)
-    Codec_WriteReg(0x0400, 0x01C0); // Left DAC Vol 0dB
-    Codec_WriteReg(0x0401, 0x01C0); // Right DAC Vol 0dB
+   // 5. Unmute DAC1 (Digital Path)
+    Codec_WriteReg(0x0400, 0x01C0);
+    Codec_WriteReg(0x0401, 0x01C0);
+
+    // 6. Disable DAC1 Soft Mute (Reg 0x420)
+    // Bit 1 = DAC1L_MUTE, Bit 0 = DAC1R_MUTE.
+    // We want them to be 0.
+    Codec_WriteReg(0x0420, 0x0000);
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
