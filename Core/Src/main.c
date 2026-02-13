@@ -1769,18 +1769,26 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(void)
     // 1. Increment Debug Counter
     RxCallbackCount++;
 
-    // 2. Copy Input Buffer to Output Buffer (Loopback)
-    // We iterate through the buffer and copy values.
-    // Note: You can add simple processing here (volume, filtering) if you want.
+    // 2. Generate Test Tone (Square Wave) to verify Output Path
+    // Instead of copying from RxBuffer, generate a test tone to isolate
+    // the output path (DMA -> SAI -> Codec -> Headphones) from the input path.
+    // Alternate between -10000 and +10000 every 100 samples for ~6Hz square wave at 16kHz
+    static uint32_t tonePhase = 0;
+    int16_t amplitude = (tonePhase < 100) ? 10000 : -10000;
+    
     for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
     {
-        TxBuffer[i] = RxBuffer[i];
+        TxBuffer[i] = amplitude;
+    }
+    
+    // Update phase for next callback
+    tonePhase++;
+    if (tonePhase >= 200) {
+        tonePhase = 0;
     }
 
-    // Note: BSP_AUDIO_OUT_Play is circular, so it automatically picks up
-    // the new data in TxBuffer for the next transmission cycle.
-    // ADD THIS LINE TEMPORARILY:
     // Force Flush Data Cache for TxBuffer from CPU -> RAM so DMA sees it.
+    // This is critical on STM32F7 with D-Cache enabled.
     SCB_CleanDCache_by_Addr((uint32_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2);
 }
 
