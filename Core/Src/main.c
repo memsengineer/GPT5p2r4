@@ -307,33 +307,39 @@ int main(void)
     // FORCE UNMUTE HEADPHONES & ROUTE DAC TO OUTPUT
     BSP_AUDIO_OUT_SetVolume(80);
 
-    // 1. Enable Headphone Output PGAs (Power Management 2)
+    // 1. Enable Bias & VMID (Power Management 1) <<-- NEW: REQUIRED FOR ANALOG
+    // Bit 1: VMID_SEL (2x50k), Bit 0: BIAS_ENA
+    Codec_WriteReg(0x0001, 0x0003);
+
+    // 2. Enable Power for DACs and ADCs (Power Management 4) <<-- NEW: REQUIRED FOR LOOPBACK
+    // Bits 5,4: AIF1DAC1 L/R | Bits 3,2: AIF1ADC1 L/R | Bits 1,0: ADC L/R
+    // Value 0x003F enables the whole Digital Audio Interface 1 chain
+    Codec_WriteReg(0x0004, 0x003F);
+
+    // 3. Enable Headphone Output PGAs (Power Management 2)
     // 0x6350 (Mics) | 0x0018 (Headphones) = 0x6368
     Codec_WriteReg(0x0002, 0x6368);
 
-    // 2. Enable Output Mixers (Power Management 3) <<--- THIS IS NEW AND CRITICAL
+    // 4. Enable Output Mixers (Power Management 3)
     // Enable MIXOUTL (Bit 8) and MIXOUTR (Bit 9) | MIXINL (Bit 5) | MIXINR (Bit 4)
-    // Value: 0x0330 (Hex)
     Codec_WriteReg(0x0003, 0x0330);
 
-    // 3. Connect DAC1 to Output Mixers <<--- THIS IS NEW AND CRITICAL
+    // 5. Connect DAC1 to Output Mixers
     // Reg 0x2D (Left Output Mixer): Enable DAC1L (Bit 0)
     Codec_WriteReg(0x002D, 0x0001);
     // Reg 0x2E (Right Output Mixer): Enable DAC1R (Bit 0)
     Codec_WriteReg(0x002E, 0x0001);
 
-    // 4. Set Headphone Volume
+    // 6. Set Headphone Volume
     // Reg 0x39/0x3A: 0x100 (Update) | 0x39 (Volume +0dB)
     Codec_WriteReg(0x0039, 0x0139);
     Codec_WriteReg(0x003A, 0x0139);
 
-   // 5. Unmute DAC1 (Digital Path)
+    // 7. Unmute DAC1 (Digital Path)
     Codec_WriteReg(0x0400, 0x01C0);
     Codec_WriteReg(0x0401, 0x01C0);
 
-    // 6. Disable DAC1 Soft Mute (Reg 0x420)
-    // Bit 1 = DAC1L_MUTE, Bit 0 = DAC1R_MUTE.
-    // We want them to be 0.
+    // 8. Disable DAC1 Soft Mute
     Codec_WriteReg(0x0420, 0x0000);
   /* USER CODE END 2 */
 
