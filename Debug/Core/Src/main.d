@@ -74,7 +74,11 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
  ../Middlewares/Third_Party/FatFs/src/diskio.h \
  ../Middlewares/Third_Party/FatFs/src/ff.h ../FATFS/Target/sd_diskio.h \
- ../USB_HOST/App/usb_host.h
+ ../USB_HOST/App/usb_host.h \
+ /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.h \
+ /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/wm8994.h \
+ /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/../Common/audio.h \
+ /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h:
 ../Core/Inc/stm32f7xx_hal_conf.h:
@@ -156,3 +160,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Middlewares/Third_Party/FatFs/src/ff.h:
 ../FATFS/Target/sd_diskio.h:
 ../USB_HOST/App/usb_host.h:
+/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.h:
+/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/wm8994.h:
+/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/../Common/audio.h:
+/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h:

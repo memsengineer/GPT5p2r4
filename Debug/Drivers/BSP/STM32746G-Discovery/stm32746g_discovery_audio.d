@@ -1,4 +1,9 @@
-Core/Src/stm32f7xx_it.o: ../Core/Src/stm32f7xx_it.c ../Core/Inc/main.h \
+Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.o: \
+ ../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.c \
+ ../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.h \
+ ../Drivers/BSP/STM32746G-Discovery/../Components/wm8994/wm8994.h \
+ ../Drivers/BSP/STM32746G-Discovery/../Components/wm8994/../Common/audio.h \
+ ../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h \
  ../Core/Inc/stm32f7xx_hal_conf.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rcc.h \
@@ -50,9 +55,11 @@ Core/Src/stm32f7xx_it.o: ../Core/Src/stm32f7xx_it.c ../Core/Inc/main.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hcd.h \
- ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h \
- ../Core/Inc/stm32f7xx_it.h
-../Core/Inc/main.h:
+ ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h
+../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.h:
+../Drivers/BSP/STM32746G-Discovery/../Components/wm8994/wm8994.h:
+../Drivers/BSP/STM32746G-Discovery/../Components/wm8994/../Common/audio.h:
+../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h:
 ../Core/Inc/stm32f7xx_hal_conf.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rcc.h:
@@ -105,4 +112,3 @@ Core/Src/stm32f7xx_it.o: ../Core/Src/stm32f7xx_it.c ../Core/Inc/main.h \
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hcd.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h:
-../Core/Inc/stm32f7xx_it.h:

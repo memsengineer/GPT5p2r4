@@ -22,6 +22,7 @@
 #include "cmsis_os.h"
 #include "fatfs.h"
 #include "usb_host.h"
+#include "stm32746g_discovery_audio.h" // <--- Add this
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -171,40 +172,45 @@ void Codec_WriteReg(uint16_t Reg, uint16_t Value)
 
 void Init_WM8994_Mic(void)
 {
-    // 1. Software Reset (Good practice)
+    // 1. Software Reset
     Codec_WriteReg(0x0000, 0x0000);
     HAL_Delay(10);
 
-    // 2. Power Management: Enable VMID (Voltage Ref) and Bias Generators
-    Codec_WriteReg(0x0039, 0x006C); // VMID_SEL=11 (50k divider), BIAS_EN=1
+    // 2. Power Management: Enable VMID (Voltage Ref) and Bias
+    Codec_WriteReg(0x0039, 0x006C); // VMID_SEL=11, BIAS_EN=1
     HAL_Delay(50); // Wait for caps to charge
 
-    // 3. Enable Input Power (IN1L/IN1R are the onboard mics)
-    // Reg 04: AIF1ADC1L_ENA, AIF1ADC1R_ENA, ADCL_ENA, ADCR_ENA
-    Codec_WriteReg(0x0004, 0x0303);
+    // 3. Enable Input Power (IN1L/IN1R) & ADCs
+    Codec_WriteReg(0x0004, 0x0303); // Enable AIF1ADC1 L/R and ADCL/R
 
     // 4. Enable Mic Bias
-    // Reg 01: MICB1_ENA (Bit 4) -> 0x0010
-    Codec_WriteReg(0x0001, 0x0010);
+    Codec_WriteReg(0x0001, 0x0010); // MICB1_ENA
 
-    // 5. Audio Interface 1 Configuration (Connects to STM32 SAI)
+    // 5. Clocking Configuration (CRITICAL STEP MISSING PREVIOUSLY)
+    // Reg 200: AIF1CLK_ENA=1, SYSCLK_SRC=0 (MCLK1)
+    Codec_WriteReg(0x0200, 0x0001);
+
+    // Reg 210: AIF1 Sample Rate. 0x0083 = 16kHz approx (Depends on MCLK)
+    // For 16kHz with typical MCLK, this usually works or defaults handle it.
+    Codec_WriteReg(0x0210, 0x0083);
+
+    // 6. Audio Interface 1 Configuration
     // Reg 300: AIF1_WL=00 (16-bit), AIF1_FMT=10 (I2S)
     Codec_WriteReg(0x0300, 0x4010);
-    // Reg 302: AIF1 Master/Slave (0=Slave)
+    // Reg 302: Slave Mode
     Codec_WriteReg(0x0302, 0x0000);
 
-    // 6. Routing (The tricky part)
-    // Connect IN1LP to Left ADC (PGA)
-    // Reg 02: IN1L_ENA, IN1R_ENA
-    Codec_WriteReg(0x0002, 0x6000);
+    // 7. Input Routing (IN1 -> ADC)
+    Codec_WriteReg(0x0002, 0x6000); // Enable IN1L / IN1R PGA
 
-    // Reg 28/29: Left/Right Input Volume (0x0100 = 0dB)
-    Codec_WriteReg(0x0028, 0x0110); // +something dB
-    Codec_WriteReg(0x0029, 0x0110);
+    // 8. Unmute & Set Input Volume (PGA)
+    // Bit 8 (0x100) is the "Update" bit. Must be 1 to apply change.
+    Codec_WriteReg(0x0028, 0x011F); // Left Input Volume: +17.625dB
+    Codec_WriteReg(0x0029, 0x011F); // Right Input Volume: +17.625dB
 
-    // Reg 40/41: ADC Volume (Digital) - Unmute
-    Codec_WriteReg(0x0400, 0x01C0); // 0x100 is 0dB, 0x1C0 is louder
-    Codec_WriteReg(0x0401, 0x01C0);
+    // 9. Unmute ADC (Digital Volume)
+    Codec_WriteReg(0x0400, 0x01C0); // Left ADC Unmute + Volume
+    Codec_WriteReg(0x0401, 0x01C0); // Right ADC Unmute + Volume
 }
 /* USER CODE END 0 */
 
@@ -270,21 +276,21 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-  // Initialize the WM8994 Codec first!
-  Init_WM8994_Mic();
-    // 1. Start SAI2 Block B (Microphone - Slave Receiver)
-    if (HAL_SAI_Receive_DMA(&hsai_BlockB2, (uint8_t *)RxBuffer, AUDIO_BUFFER_SIZE) != HAL_OK)
+  /* USER CODE BEGIN 2 */
+    // Initialize Audio Input (Frequency: 16k, BitDepth: 16, Channels: 2)
+    if (BSP_AUDIO_IN_Init(SAI_AUDIO_FREQUENCY_16K, DEFAULT_AUDIO_IN_BIT_RESOLUTION, DEFAULT_AUDIO_IN_CHANNEL_NBR) != AUDIO_OK)
     {
-      Error_Handler();
+        Error_Handler();
     }
 
-    // 2. Start SAI2 Block A (Headphone - Master Transmitter) to generate the CLOCK
-    // We send a zeroed buffer (silence) for now just to get the clock running.
-    memset(TxBuffer, 0, sizeof(TxBuffer));
-    if (HAL_SAI_Transmit_DMA(&hsai_BlockA2, (uint8_t *)TxBuffer, AUDIO_BUFFER_SIZE) != HAL_OK)
+    // Allocate buffer for BSP (It manages the DMA internally usually, or we pass ours)
+    // Note: The BSP typically starts the DMA immediately upon Init or via a Record function.
+
+    if (BSP_AUDIO_IN_Record((uint16_t*)RxBuffer, AUDIO_BUFFER_SIZE) != AUDIO_OK)
     {
-      Error_Handler();
+        Error_Handler();
     }
+  /* USER CODE END 2 */
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -1709,15 +1715,15 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
+/* USER CODE BEGIN 4 */
+// Replace HAL_SAI_RxCpltCallback with this:
+void BSP_AUDIO_IN_TransferComplete_CallBack(void)
 {
-  if (hsai->Instance == SAI2_Block_B)
-  {
-    // Invalidate D-Cache for the Receive Buffer so the CPU sees new DMA data
-    //SCB_InvalidateDCache_by_Addr((uint32_t *)RxBuffer, AUDIO_BUFFER_SIZE * sizeof(int16_t));
-
+    // This is called by the BSP when the buffer is full
     RxCallbackCount++;
-  }
+    // Process audio here...
 }
+/* USER CODE END 4 */
 
 void User_MPU_Config(void)
 {

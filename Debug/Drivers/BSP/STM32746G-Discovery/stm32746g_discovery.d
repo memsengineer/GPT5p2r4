@@ -1,5 +1,6 @@
-Core/Src/stm32f7xx_hal_timebase_tim.o: \
- ../Core/Src/stm32f7xx_hal_timebase_tim.c \
+Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.o: \
+ ../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.c \
+ ../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h \
  ../Core/Inc/stm32f7xx_hal_conf.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rcc.h \
@@ -52,6 +53,7 @@ Core/Src/stm32f7xx_hal_timebase_tim.o: \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hcd.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h
+../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h:
 ../Core/Inc/stm32f7xx_hal_conf.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rcc.h:
