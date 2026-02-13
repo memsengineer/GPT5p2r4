@@ -304,23 +304,28 @@ int main(void)
     {
       Error_Handler();
     }
-    // FORCE UNMUTE HEADPHONES
-     // 1. Set Headphone Volume to a high audible level
-     // Note: 0x39 = +0dB, 0x3F = +6dB.
-     // The '0x0100' bit is the UPDATE bit. It must be set to apply changes immediately.
-     BSP_AUDIO_OUT_SetVolume(80); // Ensure software volume is up
+    // FORCE UNMUTE HEADPHONES & ROUTE DAC TO OUTPUT
+    BSP_AUDIO_OUT_SetVolume(80);
 
-     // 2. Direct Register Writes to ensure HP_L/HP_R are unmuted
-     // Reg 0x39 (Left HP Vol): 0x100 (Enable/Update) | 0x39 (Volume)
-     Codec_WriteReg(0x0039, 0x0139);
-     // Reg 0x3A (Right HP Vol): 0x100 (Enable/Update) | 0x39 (Volume)
-     Codec_WriteReg(0x003A, 0x0139);
+    // 1. Enable Headphone Output PGAs (Power Management 2)
+    // 0x6350 (Mics) | 0x0018 (Headphones) = 0x6368
+    Codec_WriteReg(0x0002, 0x6368);
 
-     // 3. Enable Headphone Output PGAs (Power Management 2, Reg 0x02)
-     // Ensure bit 4 (HPOUT1L_ENA) and bit 3 (HPOUT1R_ENA) are set.
-     // We already set 0x6350 for mics. Adding HP bits (0x0018).
-     // Total: 0x6350 | 0x0018 = 0x6368
-     Codec_WriteReg(0x0002, 0x6368);
+    // 2. Enable Output Mixers (Power Management 3) <<--- MISSING IN REPO
+    // Enable MIXOUTL (Bit 8) and MIXOUTR (Bit 9)
+    // Value: 0x0300
+    Codec_WriteReg(0x0003, 0x0300);
+
+    // 3. Connect DAC1 to Output Mixers <<--- MISSING IN REPO
+    // Reg 0x2D (Left Output Mixer): Enable DAC1L (Bit 0)
+    Codec_WriteReg(0x002D, 0x0001);
+    // Reg 0x2E (Right Output Mixer): Enable DAC1R (Bit 0)
+    Codec_WriteReg(0x002E, 0x0001);
+
+    // 4. Set Headphone Volume
+    // Reg 0x39/0x3A: 0x100 (Update) | 0x39 (Volume +0dB)
+    Codec_WriteReg(0x0039, 0x0139);
+    Codec_WriteReg(0x003A, 0x0139);
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
