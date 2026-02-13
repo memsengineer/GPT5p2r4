@@ -168,9 +168,10 @@ void User_MPU_Config(void);
 int main(void)
 {
 
-	/* USER CODE BEGIN 1 */
-	  User_MPU_Config(); // Call our custom MPU setup
-	/* USER CODE END 1 */
+	  /* USER CODE BEGIN 1 */
+	  SCB_DisableDCache(); // <--- Add this.
+	  // User_MPU_Config(); // <--- Comment this out for this test.
+	  /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
   //MPU_Config();
