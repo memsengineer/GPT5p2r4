@@ -277,21 +277,50 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-  /* USER CODE BEGIN 2 */
-    // Initialize Audio Input (Frequency: 16k, BitDepth: 16, Channels: 2)
+
+    // 1. Initialize Audio OUT (Headphone) - MASTER (Generates Clock)
+    // This MUST be first because it sets up the SAI PLL and Codec Clocks.
+    if (BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 70, SAI_AUDIO_FREQUENCY_16K) != AUDIO_OK)
+    {
+      Error_Handler();
+    }
+
+    // 2. Initialize Audio IN (Microphone) - SLAVE (Uses Clock)
     if (BSP_AUDIO_IN_Init(SAI_AUDIO_FREQUENCY_16K, DEFAULT_AUDIO_IN_BIT_RESOLUTION, DEFAULT_AUDIO_IN_CHANNEL_NBR) != AUDIO_OK)
     {
-        Error_Handler();
+      Error_Handler();
     }
 
-    // Allocate buffer for BSP (It manages the DMA internally usually, or we pass ours)
-    // Note: The BSP typically starts the DMA immediately upon Init or via a Record function.
+    // 3. Start Playing (Output) - Starts the Clock Generation
+    // Even if the buffer is empty (0), we MUST start this to generate the clock for the mic.
+    // Note: Size is in BYTES (multiply by 2 for int16_t)
+    if (BSP_AUDIO_OUT_Play((uint16_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2) != AUDIO_OK)
+    {
+      Error_Handler();
+    }
 
+    // 4. Start Recording (Input) - Starts capturing data
     if (BSP_AUDIO_IN_Record((uint16_t*)RxBuffer, AUDIO_BUFFER_SIZE) != AUDIO_OK)
     {
-        Error_Handler();
+      Error_Handler();
     }
-  /* USER CODE END 2 */
+    // FORCE UNMUTE HEADPHONES
+     // 1. Set Headphone Volume to a high audible level
+     // Note: 0x39 = +0dB, 0x3F = +6dB.
+     // The '0x0100' bit is the UPDATE bit. It must be set to apply changes immediately.
+     BSP_AUDIO_OUT_SetVolume(80); // Ensure software volume is up
+
+     // 2. Direct Register Writes to ensure HP_L/HP_R are unmuted
+     // Reg 0x39 (Left HP Vol): 0x100 (Enable/Update) | 0x39 (Volume)
+     Codec_WriteReg(0x0039, 0x0139);
+     // Reg 0x3A (Right HP Vol): 0x100 (Enable/Update) | 0x39 (Volume)
+     Codec_WriteReg(0x003A, 0x0139);
+
+     // 3. Enable Headphone Output PGAs (Power Management 2, Reg 0x02)
+     // Ensure bit 4 (HPOUT1L_ENA) and bit 3 (HPOUT1R_ENA) are set.
+     // We already set 0x6350 for mics. Adding HP bits (0x0018).
+     // Total: 0x6350 | 0x0018 = 0x6368
+     Codec_WriteReg(0x0002, 0x6368);
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -1715,12 +1744,31 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 void BSP_AUDIO_IN_TransferComplete_CallBack(void)
 {
-    // This is called by the BSP when the buffer is full
+    // 1. Increment Debug Counter
     RxCallbackCount++;
-    // Process audio here...
+
+    // 2. Copy Input Buffer to Output Buffer (Loopback)
+    // We iterate through the buffer and copy values.
+    // Note: You can add simple processing here (volume, filtering) if you want.
+    for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
+    {
+        TxBuffer[i] = RxBuffer[i];
+    }
+
+    // Note: BSP_AUDIO_OUT_Play is circular, so it automatically picks up
+    // the new data in TxBuffer for the next transmission cycle.
+    // ADD THIS LINE TEMPORARILY:
+    // Force Flush Data Cache for TxBuffer from CPU -> RAM so DMA sees it.
+    SCB_CleanDCache_by_Addr((uint32_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2);
+}
+
+// You might also need this callback if the Play function triggers it
+void BSP_AUDIO_OUT_TransferComplete_CallBack(void)
+{
+  // Usually nothing needed here for simple loopback,
+  // but defining it prevents linker warnings if it's referenced.
 }
 /* USER CODE END 4 */
 
