@@ -158,7 +158,54 @@ void User_MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#define CODEC_I2C_ADDRESS 0x34
 
+// Helper to write to the Codec
+void Codec_WriteReg(uint16_t Reg, uint16_t Value)
+{
+    uint8_t data[2];
+    data[0] = (Value >> 8) & 0xFF;
+    data[1] = Value & 0xFF;
+    HAL_I2C_Mem_Write(&hi2c1, CODEC_I2C_ADDRESS, Reg, I2C_MEMADD_SIZE_16BIT, data, 2, 100);
+}
+
+void Init_WM8994_Mic(void)
+{
+    // 1. Software Reset (Good practice)
+    Codec_WriteReg(0x0000, 0x0000);
+    HAL_Delay(10);
+
+    // 2. Power Management: Enable VMID (Voltage Ref) and Bias Generators
+    Codec_WriteReg(0x0039, 0x006C); // VMID_SEL=11 (50k divider), BIAS_EN=1
+    HAL_Delay(50); // Wait for caps to charge
+
+    // 3. Enable Input Power (IN1L/IN1R are the onboard mics)
+    // Reg 04: AIF1ADC1L_ENA, AIF1ADC1R_ENA, ADCL_ENA, ADCR_ENA
+    Codec_WriteReg(0x0004, 0x0303);
+
+    // 4. Enable Mic Bias
+    // Reg 01: MICB1_ENA (Bit 4) -> 0x0010
+    Codec_WriteReg(0x0001, 0x0010);
+
+    // 5. Audio Interface 1 Configuration (Connects to STM32 SAI)
+    // Reg 300: AIF1_WL=00 (16-bit), AIF1_FMT=10 (I2S)
+    Codec_WriteReg(0x0300, 0x4010);
+    // Reg 302: AIF1 Master/Slave (0=Slave)
+    Codec_WriteReg(0x0302, 0x0000);
+
+    // 6. Routing (The tricky part)
+    // Connect IN1LP to Left ADC (PGA)
+    // Reg 02: IN1L_ENA, IN1R_ENA
+    Codec_WriteReg(0x0002, 0x6000);
+
+    // Reg 28/29: Left/Right Input Volume (0x0100 = 0dB)
+    Codec_WriteReg(0x0028, 0x0110); // +something dB
+    Codec_WriteReg(0x0029, 0x0110);
+
+    // Reg 40/41: ADC Volume (Digital) - Unmute
+    Codec_WriteReg(0x0400, 0x01C0); // 0x100 is 0dB, 0x1C0 is louder
+    Codec_WriteReg(0x0401, 0x01C0);
+}
 /* USER CODE END 0 */
 
 /**
@@ -223,6 +270,8 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+  // Initialize the WM8994 Codec first!
+  Init_WM8994_Mic();
     // 1. Start SAI2 Block B (Microphone - Slave Receiver)
     if (HAL_SAI_Receive_DMA(&hsai_BlockB2, (uint8_t *)RxBuffer, AUDIO_BUFFER_SIZE) != HAL_OK)
     {
