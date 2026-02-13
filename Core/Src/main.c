@@ -114,6 +114,11 @@ osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 #define AUDIO_BUFFER_SIZE 2048
 
+// Test tone generation constants (for debugging audio output)
+#define TONE_HALF_PERIOD 100        // Half period in samples (100 samples at 16kHz = ~6Hz square wave)
+#define TONE_AMPLITUDE_POSITIVE 10000   // Positive amplitude for square wave
+#define TONE_AMPLITUDE_NEGATIVE -10000  // Negative amplitude for square wave
+
 // Force these arrays to the ".RamData" section (or just rely on the linker if we cover the whole SRAM1)
 // Ideally, we place them at 0x20010000 or similar, but let's just make sure they are aligned.
 __attribute__((section(".RamData"), aligned(32))) int16_t RxBuffer[AUDIO_BUFFER_SIZE];
@@ -1772,9 +1777,9 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(void)
     // 2. Generate Test Tone (Square Wave) to verify Output Path
     // Instead of copying from RxBuffer, generate a test tone to isolate
     // the output path (DMA -> SAI -> Codec -> Headphones) from the input path.
-    // Alternate between -10000 and +10000 every 100 samples for ~6Hz square wave at 16kHz
-    static uint32_t tonePhase = 0;
-    int16_t amplitude = (tonePhase < 100) ? 10000 : -10000;
+    // Volatile to ensure proper memory visibility across interrupt contexts
+    static volatile uint32_t tonePhase = 0;
+    int16_t amplitude = (tonePhase < TONE_HALF_PERIOD) ? TONE_AMPLITUDE_POSITIVE : TONE_AMPLITUDE_NEGATIVE;
     
     for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
     {
@@ -1783,7 +1788,7 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(void)
     
     // Update phase for next callback
     tonePhase++;
-    if (tonePhase >= 200) {
+    if (tonePhase >= (TONE_HALF_PERIOD * 2)) {
         tonePhase = 0;
     }
 
