@@ -1664,12 +1664,12 @@ void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
   if (hsai->Instance == SAI2_Block_B)
   {
     // Invalidate D-Cache for the Receive Buffer so the CPU sees new DMA data
-    SCB_InvalidateDCache_by_Addr((uint32_t *)RxBuffer, AUDIO_BUFFER_SIZE * sizeof(int16_t));
+    //SCB_InvalidateDCache_by_Addr((uint32_t *)RxBuffer, AUDIO_BUFFER_SIZE * sizeof(int16_t));
 
     RxCallbackCount++;
   }
 }
-/* USER CODE BEGIN 4 */
+
 void User_MPU_Config(void)
 {
   MPU_Region_InitTypeDef MPU_InitStruct = {0};
@@ -1692,14 +1692,15 @@ void User_MPU_Config(void)
   MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
-  /* Region 1: SRAM1 (0x20010000) - 32KB - NON-CACHEABLE */
-  /* This protects our audio buffers for DMA consistency */
+  /* Region 1: SRAM1 (0x20010000) - 32KB - Normal, Non-Cacheable */
   MPU_InitStruct.Enable = MPU_REGION_ENABLE;
   MPU_InitStruct.Number = MPU_REGION_NUMBER1;
   MPU_InitStruct.BaseAddress = 0x20010000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_32KB;
   MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+
+  // TEX=1, C=0, B=0 => Normal Memory, Non-Cacheable
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
   MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
   MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
   MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
