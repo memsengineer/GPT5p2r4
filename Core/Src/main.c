@@ -108,12 +108,15 @@ SDRAM_HandleTypeDef hsdram1;
 osThreadId defaultTaskHandle;
 
 
+
+
 /* USER CODE BEGIN PV */
 #define AUDIO_BUFFER_SIZE 2048
 
-// ALIGN_32BYTES is a macro often provided by ST, but we use the GCC attribute directly here to be safe.
-__attribute__((aligned(32))) int16_t RxBuffer[AUDIO_BUFFER_SIZE];
-__attribute__((aligned(32))) int16_t TxBuffer[AUDIO_BUFFER_SIZE];
+// Force these arrays to the ".RamData" section (or just rely on the linker if we cover the whole SRAM1)
+// Ideally, we place them at 0x20010000 or similar, but let's just make sure they are aligned.
+__attribute__((section(".RamData"), aligned(32))) int16_t RxBuffer[AUDIO_BUFFER_SIZE];
+__attribute__((section(".RamData"), aligned(32))) int16_t TxBuffer[AUDIO_BUFFER_SIZE];
 
 volatile uint32_t RxCallbackCount = 0;
 /* USER CODE END PV */
@@ -150,7 +153,7 @@ static void MX_USART6_UART_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
+void User_MPU_Config(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -166,18 +169,18 @@ int main(void)
 {
 
 	/* USER CODE BEGIN 1 */
-	  SCB_DisableDCache(); // Turn off Data Cache completely for testing
+	  User_MPU_Config(); // Call our custom MPU setup
 	/* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
-  //MPU_Config(); MW comment
+  //MPU_Config();
 
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
-  /* USER CODE BEGIN Init */
+  /* USER CODE Init */
 
   /* USER CODE END Init */
 
@@ -1665,6 +1668,49 @@ void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
     RxCallbackCount++;
   }
 }
+/* USER CODE BEGIN 4 */
+void User_MPU_Config(void)
+{
+  MPU_Region_InitTypeDef MPU_InitStruct = {0};
+
+  /* Disables the MPU */
+  HAL_MPU_Disable();
+
+  /* Region 0: Background Map - Allow FULL ACCESS by default */
+  /* This prevents MemManage faults when accessing peripherals (like FMC/SDRAM) */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+  MPU_InitStruct.BaseAddress = 0x0;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
+  MPU_InitStruct.SubRegionDisable = 0x87;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS; // <--- CHANGED FROM NO_ACCESS
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /* Region 1: SRAM1 (0x20010000) - 32KB - NON-CACHEABLE */
+  /* This protects our audio buffers for DMA consistency */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER1;
+  MPU_InitStruct.BaseAddress = 0x20010000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_32KB;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /* Enables the MPU */
+  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+}
+
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
