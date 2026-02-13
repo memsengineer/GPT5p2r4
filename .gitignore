@@ -1,0 +1,22 @@
+# Build artifacts and intermediate files
+Debug/
+Release/
+
+# Object files
+*.o
+*.su
+*.d
+*.cyclo
+
+# Build outputs
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+
+# IDE specific
+.settings/
+
+# Dependency files
+*.dep
