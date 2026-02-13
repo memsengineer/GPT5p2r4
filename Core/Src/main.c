@@ -169,8 +169,8 @@ int main(void)
 {
 
 	  /* USER CODE BEGIN 1 */
-	  SCB_DisableDCache(); // <--- Add this.
-	  // User_MPU_Config(); // <--- Comment this out for this test.
+	  //SCB_DisableDCache(); // <--- Add this.
+	  User_MPU_Config(); // <--- Comment this out for this test.
 	  /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
