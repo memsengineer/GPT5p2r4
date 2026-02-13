@@ -311,12 +311,12 @@ int main(void)
     // 0x6350 (Mics) | 0x0018 (Headphones) = 0x6368
     Codec_WriteReg(0x0002, 0x6368);
 
-    // 2. Enable Output Mixers (Power Management 3) <<--- MISSING IN REPO
-    // Enable MIXOUTL (Bit 8) and MIXOUTR (Bit 9)
-    // Value: 0x0300
-    Codec_WriteReg(0x0003, 0x0300);
+    // 2. Enable Output Mixers (Power Management 3) <<--- CRITICAL MISSING STEP
+    // Enable MIXOUTL (Bit 8) and MIXOUTR (Bit 9) | MIXINL (Bit 5) | MIXINR (Bit 4)
+    // Value: 0x0330 (Hex)
+    Codec_WriteReg(0x0003, 0x0330);
 
-    // 3. Connect DAC1 to Output Mixers <<--- MISSING IN REPO
+    // 3. Connect DAC1 to Output Mixers <<--- CRITICAL MISSING STEP
     // Reg 0x2D (Left Output Mixer): Enable DAC1L (Bit 0)
     Codec_WriteReg(0x002D, 0x0001);
     // Reg 0x2E (Right Output Mixer): Enable DAC1R (Bit 0)
@@ -326,6 +326,10 @@ int main(void)
     // Reg 0x39/0x3A: 0x100 (Update) | 0x39 (Volume +0dB)
     Codec_WriteReg(0x0039, 0x0139);
     Codec_WriteReg(0x003A, 0x0139);
+
+    // 5. Unmute DAC1 (Digital Path)
+    Codec_WriteReg(0x0400, 0x01C0); // Left DAC Vol 0dB
+    Codec_WriteReg(0x0401, 0x01C0); // Right DAC Vol 0dB
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
