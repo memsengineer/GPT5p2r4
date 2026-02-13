@@ -752,7 +752,7 @@ int main(void)
  8000720:	2002      	movs	r0, #2
  8000722:	f7ff ff6b 	bl	80005fc <Codec_WriteReg>
 
-    // 2. Enable Output Mixers (Power Management 3) <<--- CRITICAL MISSING STEP
+    // 2. Enable Output Mixers (Power Management 3) <<--- THIS IS NEW AND CRITICAL
     // Enable MIXOUTL (Bit 8) and MIXOUTR (Bit 9) | MIXINL (Bit 5) | MIXINR (Bit 4)
     // Value: 0x0330 (Hex)
     Codec_WriteReg(0x0003, 0x0330);
@@ -760,7 +760,7 @@ int main(void)
  800072a:	2003      	movs	r0, #3
  800072c:	f7ff ff66 	bl	80005fc <Codec_WriteReg>
 
-    // 3. Connect DAC1 to Output Mixers <<--- CRITICAL MISSING STEP
+    // 3. Connect DAC1 to Output Mixers <<--- THIS IS NEW AND CRITICAL
     // Reg 0x2D (Left Output Mixer): Enable DAC1L (Bit 0)
     Codec_WriteReg(0x002D, 0x0001);
  8000730:	2101      	movs	r1, #1

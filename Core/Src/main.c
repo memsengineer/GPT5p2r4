@@ -311,12 +311,12 @@ int main(void)
     // 0x6350 (Mics) | 0x0018 (Headphones) = 0x6368
     Codec_WriteReg(0x0002, 0x6368);
 
-    // 2. Enable Output Mixers (Power Management 3) <<--- CRITICAL MISSING STEP
+    // 2. Enable Output Mixers (Power Management 3) <<--- THIS IS NEW AND CRITICAL
     // Enable MIXOUTL (Bit 8) and MIXOUTR (Bit 9) | MIXINL (Bit 5) | MIXINR (Bit 4)
     // Value: 0x0330 (Hex)
     Codec_WriteReg(0x0003, 0x0330);
 
-    // 3. Connect DAC1 to Output Mixers <<--- CRITICAL MISSING STEP
+    // 3. Connect DAC1 to Output Mixers <<--- THIS IS NEW AND CRITICAL
     // Reg 0x2D (Left Output Mixer): Enable DAC1L (Bit 0)
     Codec_WriteReg(0x002D, 0x0001);
     // Reg 0x2E (Right Output Mixer): Enable DAC1R (Bit 0)
