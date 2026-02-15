@@ -285,61 +285,11 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-      // 1. Initialize Audio OUT (Headphone) - MASTER (Generates Clock)
-      if (BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 80, SAI_AUDIO_FREQUENCY_16K) != AUDIO_OK)
-      {
-          Error_Handler();
-      }
+  uint8_t in_status = BSP_AUDIO_IN_Init(INPUT_DEVICE_DIGITAL_MIC, 80, AUDIO_FREQUENCY_16K);
+    if (in_status != AUDIO_OK) { /* handle error */ }
 
-      // 2. Initialize Audio IN (Microphone) - SLAVE (Uses Clock)
-      if (BSP_AUDIO_IN_Init(SAI_AUDIO_FREQUENCY_16K, DEFAULT_AUDIO_IN_BIT_RESOLUTION, DEFAULT_AUDIO_IN_CHANNEL_NBR) != AUDIO_OK)
-      {
-          Error_Handler();
-      }
-
-      // 3. Start Playing (Output) - Starts Clock
-      if (BSP_AUDIO_OUT_Play((uint16_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2) != AUDIO_OK)
-      {
-          Error_Handler();
-      }
-
-      // 4. Start Recording (Input)
-      if (BSP_AUDIO_IN_Record((uint16_t*)RxBuffer, AUDIO_BUFFER_SIZE) != AUDIO_OK)
-      {
-          Error_Handler();
-      }
-
-      // 5. Set volume and unmute via BSP (this uses proper WM8994 registers internally)
-      BSP_AUDIO_OUT_SetVolume(80);
-
-      // --- Manual fixups AFTER BSP init (only what BSP may not do) ---
-
-      // Enable Charge Pump for headphone output (CRITICAL - often missed)
-      Codec_WriteReg(0x004C, 0x8001);
-
-      // Ensure DAC1 is routed from AIF1
-      Codec_WriteReg(0x0601, 0x0001); // AIF1DAC1L -> DAC1L
-      Codec_WriteReg(0x0602, 0x0001); // AIF1DAC1R -> DAC1R
-
-      // Connect DAC1 to Output Mixer
-      Codec_WriteReg(0x002D, 0x0001); // DAC1L -> Left Output Mixer
-      Codec_WriteReg(0x002E, 0x0001); // DAC1R -> Right Output Mixer
-
-      // Enable Output Mixers
-      Codec_WriteReg(0x0003, 0x0330); // MIXOUTL_ENA | MIXOUTR_ENA | MIXINL_ENA | MIXINR_ENA
-
-      // Enable headphone outputs in Power Management 1
-      // HPOUT1L_ENA (bit 9) | HPOUT1R_ENA (bit 8) | VMID_SEL (bits 2:1) | BIAS_ENA (bit 0)
-      Codec_WriteReg(0x0001, 0x0303);
-
-      // Set headphone volume (correct registers!)
-      // Bit 8 = VU (volume update), Bits 5:0 = volume
-      // 0x39 = 0dB, with VU bit: 0x0139
-      Codec_WriteReg(0x001C, 0x0139); // Left HP Volume
-      Codec_WriteReg(0x001D, 0x0139); // Right HP Volume
-
-      // Unmute DAC
-      Codec_WriteReg(0x0420, 0x0000); // DAC1 Softmute = disabled
+    uint8_t out_status = BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 80, AUDIO_FREQUENCY_16K);
+    if (out_status != AUDIO_OK) { /* handle error */ }
 
 
   /* USER CODE END 2 */
