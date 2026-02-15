@@ -285,11 +285,13 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-  uint8_t in_status = BSP_AUDIO_IN_Init(INPUT_DEVICE_DIGITAL_MIC, 80, AUDIO_FREQUENCY_16K);
-    if (in_status != AUDIO_OK) { /* handle error */ }
-
-    uint8_t out_status = BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 80, AUDIO_FREQUENCY_16K);
-    if (out_status != AUDIO_OK) { /* handle error */ }
+  uint8_t ret = BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 70, SAI_AUDIO_FREQUENCY_16K);
+  if (ret != AUDIO_OK) {
+      // Handle error
+  }
+  if (BSP_AUDIO_IN_Init(SAI_AUDIO_FREQUENCY_16K, DEFAULT_AUDIO_IN_BIT_RESOLUTION, DEFAULT_AUDIO_IN_CHANNEL_NBR) != AUDIO_OK) {
+      Error_Handler();
+  }
 
 
   /* USER CODE END 2 */
