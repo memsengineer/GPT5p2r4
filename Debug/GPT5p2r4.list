@@ -593,9 +593,9 @@ void Codec_WriteReg(uint16_t Reg, uint16_t Value)
  8000640:	2001284c 	.word	0x2001284c
 
 08000644 <main>:
-  * @brief  The application entry point.
   * @retval int
   */
+//marker
 
 int main(void)
 {
