@@ -161,57 +161,9 @@ void User_MPU_Config(void);
 /* USER CODE BEGIN 0 */
 #define CODEC_I2C_ADDRESS 0x34
 
-// Helper to write to the Codec
-void Codec_WriteReg(uint16_t Reg, uint16_t Value)
-{
-    uint8_t data[2];
-    data[0] = (Value >> 8) & 0xFF;
-    data[1] = Value & 0xFF;
-    HAL_I2C_Mem_Write(&hi2c1, CODEC_I2C_ADDRESS, Reg, I2C_MEMADD_SIZE_16BIT, data, 2, 100);
-}
 
-void Init_WM8994_Mic(void)
-{
-    // 1. Software Reset
-    Codec_WriteReg(0x0000, 0x0000);
-    HAL_Delay(10);
 
-    // 2. Power Management: Enable VMID (Voltage Ref) and Bias
-    Codec_WriteReg(0x0039, 0x006C); // VMID_SEL=11, BIAS_EN=1
-    HAL_Delay(50); // Wait for caps to charge
 
-    // 3. Enable Input Power (IN1L/IN1R) & ADCs
-    Codec_WriteReg(0x0004, 0x0303); // Enable AIF1ADC1 L/R and ADCL/R
-
-    // 4. Enable Mic Bias
-    Codec_WriteReg(0x0001, 0x0010); // MICB1_ENA
-
-    // 5. Clocking Configuration (CRITICAL STEP MISSING PREVIOUSLY)
-    // Reg 200: AIF1CLK_ENA=1, SYSCLK_SRC=0 (MCLK1)
-    Codec_WriteReg(0x0200, 0x0001);
-
-    // Reg 210: AIF1 Sample Rate. 0x0083 = 16kHz approx (Depends on MCLK)
-    // For 16kHz with typical MCLK, this usually works or defaults handle it.
-    Codec_WriteReg(0x0210, 0x0083);
-
-    // 6. Audio Interface 1 Configuration
-    // Reg 300: AIF1_WL=00 (16-bit), AIF1_FMT=10 (I2S)
-    Codec_WriteReg(0x0300, 0x4010);
-    // Reg 302: Slave Mode
-    Codec_WriteReg(0x0302, 0x0000);
-
-    // 7. Input Routing (IN1 -> ADC)
-    Codec_WriteReg(0x0002, 0x6000); // Enable IN1L / IN1R PGA
-
-    // 8. Unmute & Set Input Volume (PGA)
-    // Bit 8 (0x100) is the "Update" bit. Must be 1 to apply change.
-    Codec_WriteReg(0x0028, 0x011F); // Left Input Volume: +17.625dB
-    Codec_WriteReg(0x0029, 0x011F); // Right Input Volume: +17.625dB
-
-    // 9. Unmute ADC (Digital Volume)
-    Codec_WriteReg(0x0400, 0x01C0); // Left ADC Unmute + Volume
-    Codec_WriteReg(0x0401, 0x01C0); // Right ADC Unmute + Volume
-}
 /* USER CODE END 0 */
 
 /**
@@ -279,69 +231,38 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
-    // 1. Initialize Audio OUT (Headphone) - MASTER (Generates Clock)
-    // This MUST be first because it sets up the SAI PLL and Codec Clocks.
-    if (BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 70, SAI_AUDIO_FREQUENCY_16K) != AUDIO_OK)
-    {
-      Error_Handler();
-    }
+  // Initialize for simultaneous microphone input and headphone output
+  if (BSP_AUDIO_IN_OUT_Init(INPUT_DEVICE_DIGITAL_MICROPHONE_2,
+                            OUTPUT_DEVICE_HEADPHONE,
+                            SAI_AUDIO_FREQUENCY_16K,
+                            DEFAULT_AUDIO_IN_BIT_RESOLUTION,
+                            DEFAULT_AUDIO_IN_CHANNEL_NBR) != AUDIO_OK)
+  {
+    Error_Handler();
+  }
 
-    // 2. Initialize Audio IN (Microphone) - SLAVE (Uses Clock)
-    if (BSP_AUDIO_IN_Init(SAI_AUDIO_FREQUENCY_16K, DEFAULT_AUDIO_IN_BIT_RESOLUTION, DEFAULT_AUDIO_IN_CHANNEL_NBR) != AUDIO_OK)
-    {
-      Error_Handler();
-    }
+  // **FIX THE SLOT BUG**: Reconfigure Block A to use slots 0&2 for headphones
+  extern SAI_HandleTypeDef haudio_out_sai;  // Declare external handle
+  __HAL_SAI_DISABLE(&haudio_out_sai);       // Disable to modify
+  haudio_out_sai.SlotInit.SlotActive = CODEC_AUDIOFRAME_SLOT_02;  // Slots 0&2 for DAC
+  HAL_SAI_Init(&haudio_out_sai);            // Reinitialize
+  __HAL_SAI_ENABLE(&haudio_out_sai);        // Re-enable
 
-    // 3. Start Playing (Output) - Starts the Clock Generation
-    // Even if the buffer is empty (0), we MUST start this to generate the clock for the mic.
-    // Note: Size is in BYTES (multiply by 2 for int16_t)
-    if (BSP_AUDIO_OUT_Play((uint16_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2) != AUDIO_OK)
-    {
-      Error_Handler();
-    }
+  // Set output volume (0-100)
+  BSP_AUDIO_OUT_SetVolume(80);
 
-    // 4. Start Recording (Input) - Starts capturing data
-    if (BSP_AUDIO_IN_Record((uint16_t*)RxBuffer, AUDIO_BUFFER_SIZE) != AUDIO_OK)
-    {
-      Error_Handler();
-    }
-    // FORCE UNMUTE HEADPHONES & ROUTE DAC TO OUTPUT
-    BSP_AUDIO_OUT_SetVolume(80);
+  // Start playback (starts clock generation)
+  if (BSP_AUDIO_OUT_Play((uint16_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2) != AUDIO_OK)
+  {
+    Error_Handler();
+  }
 
-    // 1. Enable Bias & VMID (Power Management 1) <<-- NEW: REQUIRED FOR ANALOG
-    // Bit 1: VMID_SEL (2x50k), Bit 0: BIAS_ENA
-    Codec_WriteReg(0x0001, 0x0003);
+  // Start recording
+  if (BSP_AUDIO_IN_Record((uint16_t*)RxBuffer, AUDIO_BUFFER_SIZE) != AUDIO_OK)
+  {
+    Error_Handler();
+  }
 
-    // 2. Enable Power for DACs and ADCs (Power Management 4) <<-- NEW: REQUIRED FOR LOOPBACK
-    // Bits 5,4: AIF1DAC1 L/R | Bits 3,2: AIF1ADC1 L/R | Bits 1,0: ADC L/R
-    // Value 0x003F enables the whole Digital Audio Interface 1 chain
-    Codec_WriteReg(0x0004, 0x003F);
-
-    // 3. Enable Headphone Output PGAs (Power Management 2)
-    // 0x6350 (Mics) | 0x0018 (Headphones) = 0x6368
-    Codec_WriteReg(0x0002, 0x6368);
-
-    // 4. Enable Output Mixers (Power Management 3)
-    // Enable MIXOUTL (Bit 8) and MIXOUTR (Bit 9) | MIXINL (Bit 5) | MIXINR (Bit 4)
-    Codec_WriteReg(0x0003, 0x0330);
-
-    // 5. Connect DAC1 to Output Mixers
-    // Reg 0x2D (Left Output Mixer): Enable DAC1L (Bit 0)
-    Codec_WriteReg(0x002D, 0x0001);
-    // Reg 0x2E (Right Output Mixer): Enable DAC1R (Bit 0)
-    Codec_WriteReg(0x002E, 0x0001);
-
-    // 6. Set Headphone Volume
-    // Reg 0x39/0x3A: 0x100 (Update) | 0x39 (Volume +0dB)
-    Codec_WriteReg(0x0039, 0x0139);
-    Codec_WriteReg(0x003A, 0x0139);
-
-    // 7. Unmute DAC1 (Digital Path)
-    Codec_WriteReg(0x0400, 0x01C0);
-    Codec_WriteReg(0x0401, 0x01C0);
-
-    // 8. Disable DAC1 Soft Mute
-    Codec_WriteReg(0x0420, 0x0000);
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
