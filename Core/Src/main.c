@@ -114,12 +114,33 @@ osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 #define AUDIO_BUFFER_SIZE 2048
 
-// Force these arrays to the ".RamData" section (or just rely on the linker if we cover the whole SRAM1)
-// Ideally, we place them at 0x20010000 or similar, but let's just make sure they are aligned.
 __attribute__((section(".RamData"), aligned(32))) int16_t RxBuffer[AUDIO_BUFFER_SIZE];
 __attribute__((section(".RamData"), aligned(32))) int16_t TxBuffer[AUDIO_BUFFER_SIZE];
 
 volatile uint32_t RxCallbackCount = 0;
+
+// LCD Display Parameters
+#define LCD_WIDTH  480
+#define LCD_HEIGHT 272
+#define LCD_FB_START_ADDRESS 0xC0000000
+
+// Waveform display settings
+#define WAVE_HEIGHT 100      // Height of each waveform in pixels
+#define WAVE_Y_LEFT 60       // Y position for left channel
+#define WAVE_Y_RIGHT 180     // Y position for right channel
+#define WAVE_SAMPLES 480     // Number of samples to display (one per X pixel)
+
+// Downsampled waveform buffers
+int16_t waveform_left[WAVE_SAMPLES];
+int16_t waveform_right[WAVE_SAMPLES];
+volatile uint8_t waveform_ready = 0;
+
+// RGB565 Colors
+#define COLOR_BLACK   0x0000
+#define COLOR_RED     0xF800
+#define COLOR_GREEN   0x07E0
+#define COLOR_GRAY    0x7BEF
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -161,8 +182,73 @@ void User_MPU_Config(void);
 /* USER CODE BEGIN 0 */
 #define CODEC_I2C_ADDRESS 0x34
 
+// Draw a pixel at (x, y) with specified color
+void LCD_DrawPixel(uint16_t x, uint16_t y, uint16_t color)
+{
+    if (x >= LCD_WIDTH || y >= LCD_HEIGHT) return;
+
+    uint16_t *framebuffer = (uint16_t *)LCD_FB_START_ADDRESS;
+    framebuffer[y * LCD_WIDTH + x] = color;
+}
+
+// Draw a horizontal line
+void LCD_DrawHLine(uint16_t x, uint16_t y, uint16_t length, uint16_t color)
+{
+    for (uint16_t i = 0; i < length; i++)
+    {
+        LCD_DrawPixel(x + i, y, color);
+    }
+}
 
 
+// Clear a rectangular area (optimized)
+void LCD_ClearArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
+{
+    uint16_t *framebuffer = (uint16_t *)LCD_FB_START_ADDRESS;
+
+    for (uint16_t j = 0; j < height; j++)
+    {
+        uint16_t *line = &framebuffer[(y + j) * LCD_WIDTH + x];
+        for (uint16_t i = 0; i < width; i++)
+        {
+            *line++ = color;
+        }
+    }
+}
+
+// Draw waveforms on LCD
+void LCD_DrawWaveforms(void)
+{
+    // Clear the waveform areas
+    LCD_ClearArea(0, WAVE_Y_LEFT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
+    LCD_ClearArea(0, WAVE_Y_RIGHT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
+
+    // Draw center reference lines
+    LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
+    LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
+
+    // Draw the waveforms
+    for (int x = 0; x < WAVE_SAMPLES; x++)
+    {
+        // Left channel (GREEN)
+        int16_t left_y = WAVE_Y_LEFT - (waveform_left[x] * (WAVE_HEIGHT/2) / 32768);
+
+        // Clamp to valid range
+        if (left_y < WAVE_Y_LEFT - WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT - WAVE_HEIGHT/2;
+        if (left_y > WAVE_Y_LEFT + WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT + WAVE_HEIGHT/2;
+
+        // Right channel (RED)
+        int16_t right_y = WAVE_Y_RIGHT - (waveform_right[x] * (WAVE_HEIGHT/2) / 32768);
+
+        // Clamp to valid range
+        if (right_y < WAVE_Y_RIGHT - WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT - WAVE_HEIGHT/2;
+        if (right_y > WAVE_Y_RIGHT + WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT + WAVE_HEIGHT/2;
+
+        // Draw pixels
+        LCD_DrawPixel(x, left_y, COLOR_GREEN);
+        LCD_DrawPixel(x, right_y, COLOR_RED);
+    }
+}
 
 /* USER CODE END 0 */
 
@@ -262,6 +348,8 @@ int main(void)
   {
     Error_Handler();
   }
+
+
 
   /* USER CODE END 2 */
 
@@ -1688,21 +1776,32 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void BSP_AUDIO_IN_TransferComplete_CallBack(void)
 {
-    // 1. Increment Debug Counter
     RxCallbackCount++;
 
-    // 2. Copy Input Buffer to Output Buffer (Loopback)
-    // We iterate through the buffer and copy values.
-    // Note: You can add simple processing here (volume, filtering) if you want.
+    // Downsample for display: AUDIO_BUFFER_SIZE samples → WAVE_SAMPLES
+    uint16_t decimate = AUDIO_BUFFER_SIZE / WAVE_SAMPLES / 2; // Divide by 2 for stereo
+
+    for (int i = 0; i < WAVE_SAMPLES; i++)
+    {
+        uint16_t src_idx = i * decimate * 2;  // *2 for stereo interleaving
+
+        if (src_idx < AUDIO_BUFFER_SIZE - 1)
+        {
+            waveform_left[i] = RxBuffer[src_idx];
+            waveform_right[i] = RxBuffer[src_idx + 1];
+        }
+    }
+
+    // Signal that new waveform data is ready
+    waveform_ready = 1;
+
+    // Copy audio for loopback
     for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
     {
         TxBuffer[i] = RxBuffer[i];
     }
 
-    // Note: BSP_AUDIO_OUT_Play is circular, so it automatically picks up
-    // the new data in TxBuffer for the next transmission cycle.
-    // ADD THIS LINE TEMPORARILY:
-    // Force Flush Data Cache for TxBuffer from CPU -> RAM so DMA sees it.
+    // Force Flush Data Cache for TxBuffer from CPU -> RAM so DMA sees it
     SCB_CleanDCache_by_Addr((uint32_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2);
 }
 
@@ -1752,6 +1851,22 @@ void User_MPU_Config(void)
   MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
+  /* Region 2: SDRAM (0xC0000000) - 8MB - Normal, Write-back, Write-allocate */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER2;
+  MPU_InitStruct.BaseAddress = 0xC0000000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_8MB;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_BUFFERABLE;
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+
+
   /* Enables the MPU */
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 }
@@ -1771,10 +1886,27 @@ void StartDefaultTask(void const * argument)
   /* init code for USB_HOST */
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 5 */
+
+  // Initialize LCD after RTOS is running
+  osDelay(100);  // Give system time to stabilize
+
+  LCD_ClearArea(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
+  LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
+  LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
+
+  uint32_t draw_counter = 0;
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    // Draw waveforms when new data is available, but throttle updates
+    if (waveform_ready && (draw_counter++ % 4 == 0))  // Update every 4th callback
+    {
+      LCD_DrawWaveforms();
+      waveform_ready = 0;
+    }
+
+    osDelay(10);  // Increase delay to reduce CPU load
   }
   /* USER CODE END 5 */
 }
