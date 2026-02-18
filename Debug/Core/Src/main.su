@@ -1,7 +1,7 @@
 ../Drivers/CMSIS/Include/core_cm7.h:2491:22:SCB_CleanDCache_by_Addr	32	static,ignoring_inline_asm
 ../Core/Src/main.c:187:6:LCD_DrawPixel	24	static
 ../Core/Src/main.c:196:6:LCD_DrawHLine	32	static
-../Core/Src/main.c:204:6:LCD_ClearArea	40	static
+../Core/Src/main.c:204:6:LCD_ClearArea	32	static
 ../Core/Src/main.c:268:6:LCD_DrawWaveforms	24	static
 ../Core/Src/main.c:309:5:main	56	static
 ../Core/Src/main.c:453:6:SystemClock_Config	88	static

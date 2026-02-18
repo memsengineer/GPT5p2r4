@@ -1,7 +1,7 @@
 ../Drivers/CMSIS/Include/core_cm7.h:2491:22:SCB_CleanDCache_by_Addr	2
 ../Core/Src/main.c:187:6:LCD_DrawPixel	3
 ../Core/Src/main.c:196:6:LCD_DrawHLine	2
-../Core/Src/main.c:204:6:LCD_ClearArea	1
+../Core/Src/main.c:204:6:LCD_ClearArea	3
 ../Core/Src/main.c:268:6:LCD_DrawWaveforms	8
 ../Core/Src/main.c:309:5:main	4
 ../Core/Src/main.c:453:6:SystemClock_Config	4

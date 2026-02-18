@@ -200,19 +200,19 @@ void LCD_DrawHLine(uint16_t x, uint16_t y, uint16_t length, uint16_t color)
         LCD_DrawPixel(x + i, y, color);
     }
 }
-// Clear a rectangular area using DMA2D (MUCH faster!)
+// Clear a rectangular area (CPU-based, debugger-friendly)
 void LCD_ClearArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
 {
-    uint32_t destination = LCD_FB_START_ADDRESS + 2 * (y * LCD_WIDTH + x);
+    uint16_t *framebuffer = (uint16_t *)LCD_FB_START_ADDRESS;
 
-    // Configure DMA2D for memory fill
-    hdma2d.Init.Mode = DMA2D_R2M;  // Register to Memory
-    hdma2d.Init.ColorMode = DMA2D_OUTPUT_RGB565;
-    hdma2d.Init.OutputOffset = LCD_WIDTH - width;
-
-    HAL_DMA2D_Init(&hdma2d);
-    HAL_DMA2D_Start(&hdma2d, color, destination, width, height);
-    HAL_DMA2D_PollForTransfer(&hdma2d, 100);
+    for (uint16_t j = 0; j < height; j++)
+    {
+        uint16_t *line = &framebuffer[(y + j) * LCD_WIDTH + x];
+        for (uint16_t i = 0; i < width; i++)
+        {
+            *line++ = color;  // Pointer increment for speed
+        }
+    }
 }
 
 //// Clear a rectangular area (optimized)
