@@ -199,35 +199,74 @@ void LCD_DrawHLine(uint16_t x, uint16_t y, uint16_t length, uint16_t color)
         LCD_DrawPixel(x + i, y, color);
     }
 }
-
-
-// Clear a rectangular area (optimized)
+// Clear a rectangular area using DMA2D (MUCH faster!)
 void LCD_ClearArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
 {
-    uint16_t *framebuffer = (uint16_t *)LCD_FB_START_ADDRESS;
+    uint32_t destination = LCD_FB_START_ADDRESS + 2 * (y * LCD_WIDTH + x);
 
-    for (uint16_t j = 0; j < height; j++)
-    {
-        uint16_t *line = &framebuffer[(y + j) * LCD_WIDTH + x];
-        for (uint16_t i = 0; i < width; i++)
-        {
-            *line++ = color;
-        }
-    }
+    // Configure DMA2D for memory fill
+    hdma2d.Init.Mode = DMA2D_R2M;  // Register to Memory
+    hdma2d.Init.ColorMode = DMA2D_OUTPUT_RGB565;
+    hdma2d.Init.OutputOffset = LCD_WIDTH - width;
+
+    HAL_DMA2D_Init(&hdma2d);
+    HAL_DMA2D_Start(&hdma2d, color, destination, width, height);
+    HAL_DMA2D_PollForTransfer(&hdma2d, 100);
 }
 
+//// Clear a rectangular area (optimized)
+//void LCD_ClearArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
+//{
+//    uint16_t *framebuffer = (uint16_t *)LCD_FB_START_ADDRESS;
+//
+//    for (uint16_t j = 0; j < height; j++)
+//    {
+//        uint16_t *line = &framebuffer[(y + j) * LCD_WIDTH + x];
+//        for (uint16_t i = 0; i < width; i++)
+//        {
+//            *line++ = color;
+//        }
+//    }
+//}
+
 // Draw waveforms on LCD
+//void LCD_DrawWaveforms(void)
+//{
+//    // Clear the waveform areas
+//    LCD_ClearArea(0, WAVE_Y_LEFT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
+//    LCD_ClearArea(0, WAVE_Y_RIGHT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
+//
+//    // Draw center reference lines
+//    LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
+//    LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
+//
+//    // Draw the waveforms
+//    for (int x = 0; x < WAVE_SAMPLES; x++)
+//    {
+//        // Left channel (GREEN)
+//        int16_t left_y = WAVE_Y_LEFT - (waveform_left[x] * (WAVE_HEIGHT/2) / 32768);
+//
+//        // Clamp to valid range
+//        if (left_y < WAVE_Y_LEFT - WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT - WAVE_HEIGHT/2;
+//        if (left_y > WAVE_Y_LEFT + WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT + WAVE_HEIGHT/2;
+//
+//        // Right channel (RED)
+//        int16_t right_y = WAVE_Y_RIGHT - (waveform_right[x] * (WAVE_HEIGHT/2) / 32768);
+//
+//        // Clamp to valid range
+//        if (right_y < WAVE_Y_RIGHT - WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT - WAVE_HEIGHT/2;
+//        if (right_y > WAVE_Y_RIGHT + WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT + WAVE_HEIGHT/2;
+//
+//        // Draw pixels
+//        LCD_DrawPixel(x, left_y, COLOR_GREEN);
+//        LCD_DrawPixel(x, right_y, COLOR_RED);
+//    }
+//}
+
+// Draw waveforms on LCD (simplified - no clearing)
 void LCD_DrawWaveforms(void)
 {
-    // Clear the waveform areas
-    LCD_ClearArea(0, WAVE_Y_LEFT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
-    LCD_ClearArea(0, WAVE_Y_RIGHT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
-
-    // Draw center reference lines
-    LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
-    LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
-
-    // Draw the waveforms
+    // Only draw the waveforms, don't clear first
     for (int x = 0; x < WAVE_SAMPLES; x++)
     {
         // Left channel (GREEN)
@@ -249,7 +288,6 @@ void LCD_DrawWaveforms(void)
         LCD_DrawPixel(x, right_y, COLOR_RED);
     }
 }
-
 /* USER CODE END 0 */
 
 /**
@@ -1881,15 +1919,58 @@ void User_MPU_Config(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
+//void StartDefaultTask(void const * argument)
+//{
+//  /* init code for USB_HOST */
+//  MX_USB_HOST_Init();
+//  /* USER CODE BEGIN 5 */
+//
+//  // Initialize LCD after RTOS is running
+//  osDelay(100);  // Give system time to stabilize
+//
+//  LCD_ClearArea(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
+//  LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
+//  LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
+//
+//  uint32_t draw_counter = 0;
+//
+//  /* Infinite loop */
+//  for(;;)
+//  {
+//    // Draw waveforms when new data is available, but throttle updates
+//    if (waveform_ready && (draw_counter++ % 4 == 0))  // Update every 4th callback
+//    {
+//      LCD_DrawWaveforms();
+//      waveform_ready = 0;
+//    }
+//
+//    osDelay(10);  // Increase delay to reduce CPU load
+//  }
+//  /* USER CODE END 5 */
+//}
+//void StartDefaultTask(void const * argument)
+//{
+//  /* init code for USB_HOST */
+//  MX_USB_HOST_Init();
+//  /* USER CODE BEGIN 5 */
+//
+//  uint32_t draw_counter = 0;
+//
+//  /* Infinite loop */
+//  for(;;)
+//  {
+//    osDelay(10);
+//  }
+//  /* USER CODE END 5 */
+//}
+
 void StartDefaultTask(void const * argument)
 {
   /* init code for USB_HOST */
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 5 */
 
-  // Initialize LCD after RTOS is running
-  osDelay(100);  // Give system time to stabilize
-
+  osDelay(100);
   LCD_ClearArea(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
   LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
   LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
@@ -1899,14 +1980,14 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    // Draw waveforms when new data is available, but throttle updates
-    if (waveform_ready && (draw_counter++ % 4 == 0))  // Update every 4th callback
+    // Update every 10th callback instead of 4th
+    if (waveform_ready && (draw_counter++ % 10 == 0))
     {
       LCD_DrawWaveforms();
       waveform_ready = 0;
     }
 
-    osDelay(10);  // Increase delay to reduce CPU load
+    osDelay(50);  // Longer delay = less frequent checks
   }
   /* USER CODE END 5 */
 }
