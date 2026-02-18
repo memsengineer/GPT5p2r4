@@ -1,4 +1,6 @@
-Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
+Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.o: \
+ ../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.c \
+ ../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h \
  ../Core/Inc/stm32f7xx_hal_conf.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rcc.h \
@@ -50,37 +52,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hcd.h \
- ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
- ../Core/Inc/FreeRTOSConfig.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1/portmacro.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- ../FATFS/App/fatfs.h ../Middlewares/Third_Party/FatFs/src/ff.h \
- ../Middlewares/Third_Party/FatFs/src/integer.h ../FATFS/Target/ffconf.h \
- ../FATFS/Target/bsp_driver_sd.h ../FATFS/Target/fatfs_platform.h \
- ../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
- ../Middlewares/Third_Party/FatFs/src/diskio.h \
- ../Middlewares/Third_Party/FatFs/src/ff.h ../FATFS/Target/sd_diskio.h \
- ../USB_HOST/App/usb_host.h \
- /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.h \
- /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/wm8994.h \
- /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/../Common/audio.h \
- /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h \
- /home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.h
-../Core/Inc/main.h:
+ ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h
+../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h:
 ../Core/Inc/stm32f7xx_hal_conf.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rcc.h:
@@ -133,36 +106,3 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hcd.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h:
-../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
-../Core/Inc/FreeRTOSConfig.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h:
-../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1/portmacro.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
-../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
-../FATFS/App/fatfs.h:
-../Middlewares/Third_Party/FatFs/src/ff.h:
-../Middlewares/Third_Party/FatFs/src/integer.h:
-../FATFS/Target/ffconf.h:
-../FATFS/Target/bsp_driver_sd.h:
-../FATFS/Target/fatfs_platform.h:
-../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h:
-../Middlewares/Third_Party/FatFs/src/diskio.h:
-../Middlewares/Third_Party/FatFs/src/ff.h:
-../FATFS/Target/sd_diskio.h:
-../USB_HOST/App/usb_host.h:
-/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_audio.h:
-/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/wm8994.h:
-/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/../Components/wm8994/../Common/audio.h:
-/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h:
-/home/mark/Documents/ComprehensionEngineering/reed\ organ\ blower/Programming/new_workspace/GPT5p2r4/Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.h:

@@ -23,6 +23,7 @@
 #include "fatfs.h"
 #include "usb_host.h"
 #include "stm32746g_discovery_audio.h" // <--- Add this
+#include "stm32746g_discovery_sdram.h" // <--- ADD THIS
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -263,10 +264,18 @@ void LCD_ClearArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint
 //    }
 //}
 
-// Draw waveforms on LCD (simplified - no clearing)
+// Draw waveforms on LCD
 void LCD_DrawWaveforms(void)
 {
-    // Only draw the waveforms, don't clear first
+    // Clear the waveform areas (just the waveform bands, not the whole screen)
+    LCD_ClearArea(0, WAVE_Y_LEFT - WAVE_HEIGHT/2, LCD_WIDTH, WAVE_HEIGHT, COLOR_BLACK);
+    LCD_ClearArea(0, WAVE_Y_RIGHT - WAVE_HEIGHT/2, LCD_WIDTH, WAVE_HEIGHT, COLOR_BLACK);
+
+    // Redraw center reference lines
+    LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
+    LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
+
+    // Draw the waveforms
     for (int x = 0; x < WAVE_SAMPLES; x++)
     {
         // Left channel (GREEN)
@@ -288,6 +297,7 @@ void LCD_DrawWaveforms(void)
         LCD_DrawPixel(x, right_y, COLOR_RED);
     }
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -354,6 +364,10 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+
+
+  // Initialize SDRAM using BSP function
+  BSP_SDRAM_Init();
 
   // Initialize for simultaneous microphone input and headphone output
   if (BSP_AUDIO_IN_OUT_Init(INPUT_DEVICE_DIGITAL_MICROPHONE_2,
