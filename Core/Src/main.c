@@ -118,6 +118,10 @@ osThreadId defaultTaskHandle;
 __attribute__((section(".RamData"), aligned(32))) int16_t RxBuffer[AUDIO_BUFFER_SIZE];
 __attribute__((section(".RamData"), aligned(32))) int16_t TxBuffer[AUDIO_BUFFER_SIZE];
 
+// Separate buffers for each microphone (de-interleaved)
+int16_t Mic1Buffer[AUDIO_BUFFER_SIZE / 2];  // Microphone 1 samples
+int16_t Mic2Buffer[AUDIO_BUFFER_SIZE / 2];  // Microphone 2 samples
+
 volatile uint32_t RxCallbackCount = 0;
 
 // LCD Display Parameters
@@ -127,19 +131,20 @@ volatile uint32_t RxCallbackCount = 0;
 
 // Waveform display settings
 #define WAVE_HEIGHT 100      // Height of each waveform in pixels
-#define WAVE_Y_LEFT 60       // Y position for left channel
-#define WAVE_Y_RIGHT 180     // Y position for right channel
+#define WAVE_Y_MIC1 60       // Y position for microphone 1
+#define WAVE_Y_MIC2 180      // Y position for microphone 2
 #define WAVE_SAMPLES 480     // Number of samples to display (one per X pixel)
 
 // Downsampled waveform buffers
-int16_t waveform_left[WAVE_SAMPLES];
-int16_t waveform_right[WAVE_SAMPLES];
+int16_t waveform_mic1[WAVE_SAMPLES];
+int16_t waveform_mic2[WAVE_SAMPLES];
 volatile uint8_t waveform_ready = 0;
 
 // RGB565 Colors
 #define COLOR_BLACK   0x0000
 #define COLOR_RED     0xF800
 #define COLOR_GREEN   0x07E0
+#define COLOR_BLUE    0x001F
 #define COLOR_GRAY    0x7BEF
 
 /* USER CODE END PV */
@@ -215,91 +220,42 @@ void LCD_ClearArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint
     }
 }
 
-//// Clear a rectangular area (optimized)
-//void LCD_ClearArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
-//{
-//    uint16_t *framebuffer = (uint16_t *)LCD_FB_START_ADDRESS;
-//
-//    for (uint16_t j = 0; j < height; j++)
-//    {
-//        uint16_t *line = &framebuffer[(y + j) * LCD_WIDTH + x];
-//        for (uint16_t i = 0; i < width; i++)
-//        {
-//            *line++ = color;
-//        }
-//    }
-//}
 
-// Draw waveforms on LCD
-//void LCD_DrawWaveforms(void)
-//{
-//    // Clear the waveform areas
-//    LCD_ClearArea(0, WAVE_Y_LEFT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
-//    LCD_ClearArea(0, WAVE_Y_RIGHT - WAVE_HEIGHT/2 - 5, LCD_WIDTH, WAVE_HEIGHT + 10, COLOR_BLACK);
-//
-//    // Draw center reference lines
-//    LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
-//    LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
-//
-//    // Draw the waveforms
-//    for (int x = 0; x < WAVE_SAMPLES; x++)
-//    {
-//        // Left channel (GREEN)
-//        int16_t left_y = WAVE_Y_LEFT - (waveform_left[x] * (WAVE_HEIGHT/2) / 32768);
-//
-//        // Clamp to valid range
-//        if (left_y < WAVE_Y_LEFT - WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT - WAVE_HEIGHT/2;
-//        if (left_y > WAVE_Y_LEFT + WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT + WAVE_HEIGHT/2;
-//
-//        // Right channel (RED)
-//        int16_t right_y = WAVE_Y_RIGHT - (waveform_right[x] * (WAVE_HEIGHT/2) / 32768);
-//
-//        // Clamp to valid range
-//        if (right_y < WAVE_Y_RIGHT - WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT - WAVE_HEIGHT/2;
-//        if (right_y > WAVE_Y_RIGHT + WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT + WAVE_HEIGHT/2;
-//
-//        // Draw pixels
-//        LCD_DrawPixel(x, left_y, COLOR_GREEN);
-//        LCD_DrawPixel(x, right_y, COLOR_RED);
-//    }
-//}
 
 // Draw waveforms on LCD
 void LCD_DrawWaveforms(void)
 {
-    // Clear the waveform areas (just the waveform bands, not the whole screen)
-    LCD_ClearArea(0, WAVE_Y_LEFT - WAVE_HEIGHT/2, LCD_WIDTH, WAVE_HEIGHT, COLOR_BLACK);
-    LCD_ClearArea(0, WAVE_Y_RIGHT - WAVE_HEIGHT/2, LCD_WIDTH, WAVE_HEIGHT, COLOR_BLACK);
+    // Clear the waveform areas
+    LCD_ClearArea(0, WAVE_Y_MIC1 - WAVE_HEIGHT/2, LCD_WIDTH, WAVE_HEIGHT, COLOR_BLACK);
+    LCD_ClearArea(0, WAVE_Y_MIC2 - WAVE_HEIGHT/2, LCD_WIDTH, WAVE_HEIGHT, COLOR_BLACK);
 
     // Redraw center reference lines
-    LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
-    LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
+    LCD_DrawHLine(0, WAVE_Y_MIC1, LCD_WIDTH, COLOR_GRAY);
+    LCD_DrawHLine(0, WAVE_Y_MIC2, LCD_WIDTH, COLOR_GRAY);
 
     // Draw the waveforms
     for (int x = 0; x < WAVE_SAMPLES; x++)
     {
-        // Left channel (GREEN)
-        int16_t left_y = WAVE_Y_LEFT - (waveform_left[x] * (WAVE_HEIGHT/2) / 32768);
+        // Microphone 1 (GREEN)
+        int16_t mic1_y = WAVE_Y_MIC1 - (waveform_mic1[x] * (WAVE_HEIGHT/2) / 32768);
 
         // Clamp to valid range
-        if (left_y < WAVE_Y_LEFT - WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT - WAVE_HEIGHT/2;
-        if (left_y > WAVE_Y_LEFT + WAVE_HEIGHT/2) left_y = WAVE_Y_LEFT + WAVE_HEIGHT/2;
+        if (mic1_y < WAVE_Y_MIC1 - WAVE_HEIGHT/2) mic1_y = WAVE_Y_MIC1 - WAVE_HEIGHT/2;
+        if (mic1_y > WAVE_Y_MIC1 + WAVE_HEIGHT/2) mic1_y = WAVE_Y_MIC1 + WAVE_HEIGHT/2;
 
-        // Right channel (RED)
-        int16_t right_y = WAVE_Y_RIGHT - (waveform_right[x] * (WAVE_HEIGHT/2) / 32768);
+        // Microphone 2 (BLUE to distinguish from Mic1)
+        int16_t mic2_y = WAVE_Y_MIC2 - (waveform_mic2[x] * (WAVE_HEIGHT/2) / 32768);
 
         // Clamp to valid range
-        if (right_y < WAVE_Y_RIGHT - WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT - WAVE_HEIGHT/2;
-        if (right_y > WAVE_Y_RIGHT + WAVE_HEIGHT/2) right_y = WAVE_Y_RIGHT + WAVE_HEIGHT/2;
+        if (mic2_y < WAVE_Y_MIC2 - WAVE_HEIGHT/2) mic2_y = WAVE_Y_MIC2 - WAVE_HEIGHT/2;
+        if (mic2_y > WAVE_Y_MIC2 + WAVE_HEIGHT/2) mic2_y = WAVE_Y_MIC2 + WAVE_HEIGHT/2;
 
         // Draw pixels
-        LCD_DrawPixel(x, left_y, COLOR_GREEN);
-        LCD_DrawPixel(x, right_y, COLOR_RED);
+        LCD_DrawPixel(x, mic1_y, COLOR_GREEN);
+        LCD_DrawPixel(x, mic2_y, COLOR_BLUE);  // Changed to blue
     }
 }
-
 /* USER CODE END 0 */
-
 /**
   * @brief  The application entry point.
   * @retval int
@@ -1830,24 +1786,31 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(void)
 {
     RxCallbackCount++;
 
-    // Downsample for display: AUDIO_BUFFER_SIZE samples → WAVE_SAMPLES
-    uint16_t decimate = AUDIO_BUFFER_SIZE / WAVE_SAMPLES / 2; // Divide by 2 for stereo
+    // De-interleave the two microphone channels
+    for (int i = 0; i < AUDIO_BUFFER_SIZE / 2; i++)
+    {
+        Mic1Buffer[i] = RxBuffer[i * 2];      // Even samples = Mic 1
+        Mic2Buffer[i] = RxBuffer[i * 2 + 1];  // Odd samples = Mic 2
+    }
+
+    // Downsample for display: (AUDIO_BUFFER_SIZE/2) samples → WAVE_SAMPLES
+    uint16_t decimate = (AUDIO_BUFFER_SIZE / 2) / WAVE_SAMPLES;
 
     for (int i = 0; i < WAVE_SAMPLES; i++)
     {
-        uint16_t src_idx = i * decimate * 2;  // *2 for stereo interleaving
+        uint16_t src_idx = i * decimate;
 
-        if (src_idx < AUDIO_BUFFER_SIZE - 1)
+        if (src_idx < AUDIO_BUFFER_SIZE / 2)
         {
-            waveform_left[i] = RxBuffer[src_idx];
-            waveform_right[i] = RxBuffer[src_idx + 1];
+            waveform_mic1[i] = Mic1Buffer[src_idx];
+            waveform_mic2[i] = Mic2Buffer[src_idx];
         }
     }
 
     // Signal that new waveform data is ready
     waveform_ready = 1;
 
-    // Copy audio for loopback
+    // Copy audio for loopback (keep for now)
     for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
     {
         TxBuffer[i] = RxBuffer[i];
@@ -1857,11 +1820,9 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(void)
     SCB_CleanDCache_by_Addr((uint32_t*)TxBuffer, AUDIO_BUFFER_SIZE * 2);
 }
 
-// You might also need this callback if the Play function triggers it
 void BSP_AUDIO_OUT_TransferComplete_CallBack(void)
 {
-  // Usually nothing needed here for simple loopback,
-  // but defining it prevents linker warnings if it's referenced.
+  // Usually nothing needed here for simple loopback
 }
 /* USER CODE END 4 */
 
@@ -1986,22 +1947,21 @@ void StartDefaultTask(void const * argument)
 
   osDelay(100);
   LCD_ClearArea(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
-  LCD_DrawHLine(0, WAVE_Y_LEFT, LCD_WIDTH, COLOR_GRAY);
-  LCD_DrawHLine(0, WAVE_Y_RIGHT, LCD_WIDTH, COLOR_GRAY);
+  LCD_DrawHLine(0, WAVE_Y_MIC1, LCD_WIDTH, COLOR_GRAY);  // Updated
+  LCD_DrawHLine(0, WAVE_Y_MIC2, LCD_WIDTH, COLOR_GRAY);  // Updated
 
   uint32_t draw_counter = 0;
 
   /* Infinite loop */
   for(;;)
   {
-    // Update every 10th callback instead of 4th
     if (waveform_ready && (draw_counter++ % 10 == 0))
     {
       LCD_DrawWaveforms();
       waveform_ready = 0;
     }
 
-    osDelay(50);  // Longer delay = less frequent checks
+    osDelay(50);
   }
   /* USER CODE END 5 */
 }
